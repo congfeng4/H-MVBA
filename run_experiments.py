@@ -17,22 +17,43 @@ from pathlib import Path
 RESULTS_DIR = "paper_results"
 TIMEOUT_PER_EXPERIMENT = 600  # seconds (10 minutes)
 PARSE_SCRIPT = "parse_metrics.py"
+SCRIPT_DIR = Path(__file__).parent.resolve()
+PARSE_SCRIPT_PATH = SCRIPT_DIR / PARSE_SCRIPT
+print(f"[debug] SCRIPT_DIR={SCRIPT_DIR}, PARSE_SCRIPT_PATH={PARSE_SCRIPT_PATH}")
 
 def run_command(cmd, cwd=None, timeout=None):
     """Run shell command with timeout, return (success, output)."""
+    print(f"[run_command] cmd={cmd[:100]}, timeout={timeout}")
+    import os
+    import signal
     try:
-        proc = subprocess.run(
+        # Start process with process group
+        proc = subprocess.Popen(
             cmd,
             shell=True,
             cwd=cwd,
-            timeout=timeout,
-            capture_output=True,
-            text=True
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            preexec_fn=os.setsid,
+            bufsize=1,
+            universal_newlines=True
         )
-        return proc.returncode == 0, proc.stdout + proc.stderr
-    except subprocess.TimeoutExpired:
-        return False, f"Timeout after {timeout} seconds"
+        try:
+            stdout, _ = proc.communicate(timeout=timeout)
+            print(f"[run_command] communicate returned, stdout len={len(stdout)}")
+            return proc.returncode == 0, stdout
+        except subprocess.TimeoutExpired:
+            print(f"[run_command] TimeoutExpired, killing process group")
+            os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+            try:
+                proc.communicate(timeout=5)
+            except subprocess.TimeoutExpired:
+                os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+                proc.communicate()
+            return False, f"Timeout after {timeout} seconds"
     except Exception as e:
+        print(f"[run_command] Exception: {e}")
         return False, str(e)
 
 def run_experiment(protocol, N, f, B, K, C, results_dir, timeout):
@@ -60,6 +81,7 @@ def run_experiment(protocol, N, f, B, K, C, results_dir, timeout):
     start_time = time.time()
     success, output = run_command(cmd, timeout=timeout)
     elapsed = time.time() - start_time
+    print(f"Command success: {success}, output length: {len(output)}, elapsed: {elapsed:.1f}s")
     
     # Move logs to experiment directory
     if Path('verbose_log').exists():
@@ -71,14 +93,16 @@ def run_experiment(protocol, N, f, B, K, C, results_dir, timeout):
     parse_success = False
     metrics_summary = None
     if (exp_dir / 'verbose_log').exists():
-        parse_cmd = f"python3 {PARSE_SCRIPT} verbose_log"
+        print(f"PARSE_SCRIPT_PATH={PARSE_SCRIPT_PATH}")
+        parse_cmd = f"python3 {PARSE_SCRIPT_PATH} verbose_log"
+        print(f"Parse command: {parse_cmd}")
         parse_success, parse_output = run_command(parse_cmd, cwd=exp_dir)
         if parse_success:
             metrics_summary = parse_output
             with open(exp_dir / 'summary.txt', 'w') as f:
                 f.write(parse_output)
             # Also generate CSV
-            run_command(f"python3 {PARSE_SCRIPT} verbose_log metrics.csv", cwd=exp_dir)
+            run_command(f"python3 {PARSE_SCRIPT_PATH} verbose_log metrics.csv", cwd=exp_dir)
         else:
             print(f"WARNING: Failed to parse metrics: {parse_output}")
     

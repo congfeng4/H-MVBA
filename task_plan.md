@@ -19,11 +19,11 @@ Run experiments comparing H-MVBA with baseline MVBAs (Dumbo-MVBA*, FIN-MVBA) acr
 - [x] Compute f for each N based on protocol tolerance (H-MVBA: f < n/5, others: f < n/3)
 - [x] Create a table of all experiments to run (see `experiment_matrix.csv` and `experiment_matrix.md`)
 
-### Phase 3: Implement Automated Experiment Runner
+### Phase 3: Implement Automated Experiment Runner ✅
 - [x] Enhance `reproduce_paper.sh` to handle large-scale runs (created `run_experiments.py`)
-- [-] Add error handling and logging (in progress)
-- [ ] Implement sequential execution (avoid overloading system)
-- [ ] Ensure proper cleanup between runs
+- [x] Add error handling and logging
+- [x] Implement sequential execution (avoid overloading system)
+- [x] Ensure proper cleanup between runs
 
 ### Phase 4: Run Experiments (Batch 1: Small N)
 - [ ] Run experiments for N = 6, 16, 31 (all protocols, all B)
@@ -64,7 +64,7 @@ Run experiments comparing H-MVBA with baseline MVBAs (Dumbo-MVBA*, FIN-MVBA) acr
 
 ## Progress Tracking
 - Start time: 2026-02-08 (estimated)
-- Current phase: Phase 2 (Design Experiment Matrix)
+- Current phase: Phase 4 (Run Experiments Batch 1)
 
 ## Files Created/Modified
 - `parse_metrics.py` (already created)

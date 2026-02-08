@@ -225,7 +225,7 @@ class SMVBA_BLS():
             if r not in self._per_round_recv:
                 self._per_round_recv[r] = Queue()
 
-            assert self.B > 0
+            assert self.B >= 0
             tx_to_send = []
             for _ in range(self.B):
                 tx_to_send.append(self.transaction_buffer.get_nowait())

@@ -14,9 +14,10 @@
 # dumbomvbastar
 # finmvba
 
-# killall --quiet python3
-pkill -9 -f "run_socket_mvba_node.py" 2>/dev/null || true
+echo "[$(date)] Killing previous nodes..."
+# killall --quiet python3 2>/dev/null || true  # killed by experiment runner
 sleep 1
+echo "[$(date)] Starting nodes..."
 
 if [[ "$6" == *"dumbo"* ]]; then
     echo "prepare keys"
@@ -28,7 +29,7 @@ mkdir -p verbose_log log
 
 i=0
 while [ "$i" -lt $1 ]; do
-    echo "start node $i..."
+    echo "[$(date)] Starting node $i..."
     /usr/bin/time -v \
         python3 run_socket_mvba_node.py \
         --sid 'sidA' \
@@ -43,8 +44,13 @@ while [ "$i" -lt $1 ]; do
         --C $5 \
         > verbose_log/$i.stdout.log \
         2> verbose_log/$i.stderr.log &
+    echo "[$(date)] Node $i started in background"
     i=$(( i + 1 ))
 done
+
+echo "[$(date)] Waiting for all nodes to complete..."
+wait
+echo "[$(date)] All nodes completed."
 
 echo logs can be found later in log/ and verbose_log/ when the protocol completes execution
 echo each execution takes at least 15 seconds, a hard-coded delay to sync up nodes
