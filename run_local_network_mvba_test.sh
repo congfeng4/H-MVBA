@@ -14,7 +14,9 @@
 # dumbomvbastar
 # finmvba
 
-killall --quiet python3
+# killall --quiet python3
+pkill -9 -f "run_socket_mvba_node.py" 2>/dev/null || true
+sleep 1
 
 if [[ "$6" == *"dumbo"* ]]; then
     echo "prepare keys"

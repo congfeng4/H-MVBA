@@ -1,3 +1,6 @@
 /log
 /verbose_log
 *.pyc
+.DS_Store
+/keys
+/paper_results
