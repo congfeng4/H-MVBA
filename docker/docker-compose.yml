@@ -1,0 +1,11 @@
+version: "3.8"
+
+services:
+  env:
+    image: hmvba-test-env:latest
+    volumes:
+      - type: bind
+        source: ../../H-MVBA
+        target: /home/H-MVBA
+    ports:
+      - "20022:22"
