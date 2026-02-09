@@ -46,8 +46,37 @@ Goal: Reproduce experiments from "Faster Hash-based Multi-valued Validated Async
 - Verified runner works with single experiment (hmvba_N6_f1_B10_K10_C0) - success
 - **Phase 3 completed**
 
-### 2026-02-08 (Phase 4: Run Experiments Batch 1 - Started)
-- Ready to run experiments for N = 6, 16, 31 (all protocols, all B)
-- Will use `run_experiments.py` with skip-completed flag to resume
-- Estimated runtime: ~2.5 hours for first batch (30 experiments)
-- Monitor logs for failures
+### 2026-02-08 (Phase 4: Run Experiments Batch 1 - Completed)
+- Ran experiments for N = 6, 16, 31 (all protocols, all B) using `run_experiments.py`
+- All 45 experiments for N≤31 completed successfully
+- Collected logs in `paper_results/` directories
+- **Phase 4 completed**
+
+### 2026-02-08 (Phase 5: Run Experiments Batch 2 - Large N)
+- Ran experiments for N = 61, 101, 201 with 20-minute timeout
+- N=61: H-MVBA completed (5 experiments), baseline protocols timed out
+- N=101: H-MVBA completed (4/5), baseline protocols timed out  
+- N=201: All protocols timed out (3 experiments)
+- Total successful experiments: 53/90 (59%)
+- **Phase 5 partially completed** (large N timeouts need addressing)
+
+### 2026-02-08 (Phase 6: Data Aggregation)
+- Created `aggregate_results.py` to parse summary.txt and experiment.log files
+- Generated `aggregated_results.csv` with 53 successful experiments
+- Computed mean latency and throughput across nodes and repetitions
+- **Phase 6 completed**
+
+### 2026-02-08 (Phase 7: Analysis & Comparison)
+- Created `generate_tables.py` to produce paper-style tables (`paper_tables.md`)
+- Created `analyze_results.py` to compute speedups vs paper claims (`speedup_analysis.md`)
+- Generated plot data files: `plot_latency_vs_b.csv`, `plot_throughput_vs_n.csv`
+- Key finding: H-MVBA outperforms baselines for N≤31, but speedups smaller than paper claims
+- **Phase 7 completed**
+
+### 2026-02-09 (Phase 8: Documentation)
+- Created `reproduction_summary.md` comprehensive report
+- Created `experiment_summary.md` statistical summary
+- Updated planning files with current status
+- Generated plots (Figures 2-4) using `generate_plots.py` (saved in `plots/` directory)
+- Augmented plot data with H-MVBA N=61,101 results (`augment_plot_data.py`)
+- **Phase 8 partially completed** (could expand with deeper analysis, statistical tests)

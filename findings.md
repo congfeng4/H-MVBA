@@ -65,3 +65,14 @@ Created `reproduce_paper.sh` that:
 - For Dumbo-MVBA*, key generation required (`run_trusted_key_gen.py`) - handled in `run_local_network_mvba_test.sh` line 19-23
 - Large N (201) may cause resource exhaustion; need to monitor
 - Experiments may take a long time (90 configurations × each with 10 repetitions)
+
+## Experiment Results & Analysis
+- **Success rate**: 53/90 experiments completed (59%)
+- **H-MVBA performance**: Outperforms baselines for N≤31, but speedups smaller than paper claims:
+  - vs Dumbo-MVBA*: up to 1.54× lower latency (paper claims 2.5×)
+  - vs FIN-MVBA: up to 3.95× lower latency (paper claims 11.7×)
+- **FIN-MVBA strength**: Shows strong performance for small batch sizes at N=6
+- **Scalability limits**: Baseline protocols time out for N≥61; H-MVBA scales better
+- **Timeout issues**: 20-minute timeout insufficient for large N (≥101) experiments
+- **Data available**: `aggregated_results.csv` contains all successful experiment metrics
+- **Analysis files**: `paper_tables.md`, `speedup_analysis.md`, `reproduction_summary.md`
