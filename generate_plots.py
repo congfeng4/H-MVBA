@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """
-Generate plots similar to paper Figures 2-4 from CSV data.
+Generate three types of plots:
+1. Number of Nodes vs Latency (s) for two B values (100, 1000)
+2. Batch size (txs) vs Latency (s) for two network size N values (16, 31)
+3. Batch size vs Throughput (txs/s) for two network size N values (16, 31)
+
 Requires: matplotlib, pandas (install via pip install matplotlib pandas)
 """
 
@@ -58,135 +62,150 @@ def load_data():
     
     return latency_df, throughput_df
 
+def load_aggregated_data():
+    """Load aggregated results CSV for throughput vs B data."""
+    aggregated_csv = 'aggregated_results.csv'
+    if not os.path.exists(aggregated_csv):
+        print(f"Warning: {aggregated_csv} not found. Some plots may be limited.")
+        return None
+    
+    agg_df = pd.read_csv(aggregated_csv)
+    # Filter out rows with missing tps_mean or latency_mean
+    agg_df = agg_df.dropna(subset=['tps_mean', 'latency_mean'])
+    # Filter out B=0 (zero batch size)
+    agg_df = agg_df[agg_df['B'] > 0]
+    return agg_df
+
 def plot_figure2(latency_df, output_dir='plots'):
-    """Figure 2: Latency vs. input size for N=31."""
+    """Figure 2: Latency vs. Batch Size - separate figures for N=16 and N=31."""
     os.makedirs(output_dir, exist_ok=True)
     
-    n_val = 31
-    df_n31 = latency_df[latency_df['N'] == n_val].copy()
+    n_values = [16, 31]
     
-    if df_n31.empty:
-        print(f"Warning: No data for N={n_val} in latency CSV")
+    for n_val in n_values:
+        plt.figure()
+        
+        for protocol in latency_df['protocol'].unique():
+            df_n = latency_df[latency_df['N'] == n_val].copy()
+            proto_df = df_n[df_n['protocol'] == protocol].sort_values('B')
+            # Filter out B=0 rows
+            proto_df = proto_df[proto_df['B'] > 0]
+            if len(proto_df) < 2:
+                continue
+            
+            plt.errorbar(
+                x=proto_df['B'],
+                y=proto_df['latency_mean'],
+                yerr=proto_df['latency_std'],
+                label=PROTOCOL_LABELS.get(protocol, protocol),
+                color=PROTOCOL_COLORS.get(protocol, 'gray'),
+                marker='o',
+                capsize=4,
+                linewidth=1.5,
+            )
+        
+        plt.xlabel('Batch Size (transactions)')
+        plt.ylabel('Latency (seconds)')
+        plt.title(f'Latency vs. Batch Size (N={n_val})')
+        plt.legend()
+        plt.grid(True, alpha=0.3)
+        
+        # Use log scale for x-axis (batch size) as values span orders of magnitude
+        plt.xscale('log')
+        # Set custom x-ticks to match actual B values
+        plt.xticks([10, 100, 1000, 7000], ['10', '100', '1000', '7000'])
+        
+        plt.tight_layout()
+        output_path = os.path.join(output_dir, f'figure2_latency_vs_batch_size_N{n_val}.png')
+        plt.savefig(output_path)
+        print(f"Saved {output_path}")
+        plt.close()
+
+def plot_figure3(agg_df, output_dir='plots'):
+    """Figure 3: Throughput vs. Batch Size - separate figures for N=16 and N=31."""
+    os.makedirs(output_dir, exist_ok=True)
+    
+    if agg_df is None or agg_df.empty:
+        print("Warning: No aggregated data available for throughput vs batch size plot.")
         return
     
-    plt.figure()
+    n_values = [16, 31]
     
-    for protocol in df_n31['protocol'].unique():
-        proto_df = df_n31[df_n31['protocol'] == protocol].sort_values('B')
-        if len(proto_df) < 2:
-            continue
+    for n_val in n_values:
+        plt.figure()
         
-        plt.errorbar(
-            x=proto_df['input_size_kb'],
-            y=proto_df['latency_mean'],
-            yerr=proto_df['latency_std'],
-            label=PROTOCOL_LABELS.get(protocol, protocol),
-            color=PROTOCOL_COLORS.get(protocol, 'gray'),
-            marker='o',
-            capsize=4,
-            linewidth=1.5,
-        )
-    
-    plt.xlabel('Input Size (KB)')
-    plt.ylabel('Latency (seconds)')
-    plt.title(f'Latency vs. Input Size (N={n_val})')
-    plt.legend()
-    plt.grid(True, alpha=0.3)
-    
-    # Set x-axis to log scale for input size (paper uses linear? Actually B values are 0,10,100,1000,7000)
-    # Use linear scale but with custom ticks
-    plt.xticks(sorted(df_n31['input_size_kb'].unique()))
-    
-    plt.tight_layout()
-    output_path = os.path.join(output_dir, f'figure2_latency_vs_input_N{n_val}.png')
-    plt.savefig(output_path)
-    print(f"Saved {output_path}")
-    plt.close()
-
-def plot_figure3(throughput_df, output_dir='plots'):
-    """Figure 3: Throughput vs. scale for B=1000."""
-    os.makedirs(output_dir, exist_ok=True)
-    
-    # We need throughput data for B=1000, but our throughput CSV is aggregated by N
-    # Actually throughput CSV contains TPS for each protocol at each N (aggregated across B?)
-    # Need to check: throughput CSV appears to be for B=1000? Let's assume it's for B=1000.
-    # We'll plot TPS vs N for each protocol.
-    
-    plt.figure()
-    
-    for protocol in throughput_df['protocol'].unique():
-        proto_df = throughput_df[throughput_df['protocol'] == protocol].sort_values('N')
-        if len(proto_df) < 2:
-            continue
+        for protocol in agg_df['protocol'].unique():
+            df_n = agg_df[agg_df['N'] == n_val].copy()
+            proto_df = df_n[df_n['protocol'] == protocol].sort_values('B')
+            if len(proto_df) < 2:
+                continue
+            
+            plt.errorbar(
+                x=proto_df['B'],
+                y=proto_df['tps_mean'],
+                yerr=proto_df['tps_std'],
+                label=PROTOCOL_LABELS.get(protocol, protocol),
+                color=PROTOCOL_COLORS.get(protocol, 'gray'),
+                marker='s',
+                capsize=4,
+                linewidth=1.5,
+            )
         
-        plt.errorbar(
-            x=proto_df['N'],
-            y=proto_df['tps_mean'],
-            yerr=proto_df['tps_std'],
-            label=PROTOCOL_LABELS.get(protocol, protocol),
-            color=PROTOCOL_COLORS.get(protocol, 'gray'),
-            marker='s',
-            capsize=4,
-            linewidth=1.5,
-        )
-    
-    plt.xlabel('Number of Parties (N)')
-    plt.ylabel('Throughput (TPS)')
-    plt.title('Throughput vs. Scale (B=1000)')
-    plt.legend()
-    plt.grid(True, alpha=0.3)
-    
-    # Set x-axis to log scale for N (paper uses linear)
-    plt.xticks(sorted(throughput_df['N'].unique()))
-    
-    plt.tight_layout()
-    output_path = os.path.join(output_dir, 'figure3_throughput_vs_scale.png')
-    plt.savefig(output_path)
-    print(f"Saved {output_path}")
-    plt.close()
+        plt.xlabel('Batch Size (transactions)')
+        plt.ylabel('Throughput (transactions per second)')
+        plt.title(f'Throughput vs. Batch Size (N={n_val})')
+        plt.legend()
+        plt.grid(True, alpha=0.3)
+        
+        # Use log scale for x-axis (batch size)
+        plt.xscale('log')
+        plt.xticks([10, 100, 1000, 7000], ['10', '100', '1000', '7000'])
+        
+        plt.tight_layout()
+        output_path = os.path.join(output_dir, f'figure3_throughput_vs_batch_size_N{n_val}.png')
+        plt.savefig(output_path)
+        print(f"Saved {output_path}")
+        plt.close()
 
 def plot_figure4(latency_df, output_dir='plots'):
-    """Figure 4: Latency vs. scale for B=1000."""
+    """Figure 4: Latency vs. Number of Nodes - separate figures for B=100 and B=1000."""
     os.makedirs(output_dir, exist_ok=True)
     
-    b_val = 1000
-    df_b1000 = latency_df[latency_df['B'] == b_val].copy()
+    b_values = [100, 1000]
     
-    if df_b1000.empty:
-        print(f"Warning: No data for B={b_val} in latency CSV")
-        return
-    
-    plt.figure()
-    
-    for protocol in df_b1000['protocol'].unique():
-        proto_df = df_b1000[df_b1000['protocol'] == protocol].sort_values('N')
-        if len(proto_df) < 2:
-            continue
+    for b_val in b_values:
+        plt.figure()
         
-        plt.errorbar(
-            x=proto_df['N'],
-            y=proto_df['latency_mean'],
-            yerr=proto_df['latency_std'],
-            label=PROTOCOL_LABELS.get(protocol, protocol),
-            color=PROTOCOL_COLORS.get(protocol, 'gray'),
-            marker='^',
-            capsize=4,
-            linewidth=1.5,
-        )
-    
-    plt.xlabel('Number of Parties (N)')
-    plt.ylabel('Latency (seconds)')
-    plt.title(f'Latency vs. Scale (B={b_val})')
-    plt.legend()
-    plt.grid(True, alpha=0.3)
-    
-    plt.xticks(sorted(df_b1000['N'].unique()))
-    
-    plt.tight_layout()
-    output_path = os.path.join(output_dir, f'figure4_latency_vs_scale_B{b_val}.png')
-    plt.savefig(output_path)
-    print(f"Saved {output_path}")
-    plt.close()
+        for protocol in latency_df['protocol'].unique():
+            df_b = latency_df[latency_df['B'] == b_val].copy()
+            proto_df = df_b[df_b['protocol'] == protocol].sort_values('N')
+            if len(proto_df) < 2:
+                continue
+            
+            plt.errorbar(
+                x=proto_df['N'],
+                y=proto_df['latency_mean'],
+                yerr=proto_df['latency_std'],
+                label=PROTOCOL_LABELS.get(protocol, protocol),
+                color=PROTOCOL_COLORS.get(protocol, 'gray'),
+                marker='^',
+                capsize=4,
+                linewidth=1.5,
+            )
+        
+        plt.xlabel('Number of Nodes (N)')
+        plt.ylabel('Latency (seconds)')
+        plt.title(f'Latency vs. Number of Nodes (B={b_val})')
+        plt.legend()
+        plt.grid(True, alpha=0.3)
+        
+        plt.xticks(sorted(latency_df['N'].unique()))
+        
+        plt.tight_layout()
+        output_path = os.path.join(output_dir, f'figure4_latency_vs_nodes_B{b_val}.png')
+        plt.savefig(output_path)
+        print(f"Saved {output_path}")
+        plt.close()
 
 def plot_additional_comparisons(latency_df, throughput_df, output_dir='plots'):
     """Additional plots: Speedup comparisons, etc."""
@@ -197,9 +216,11 @@ def plot_additional_comparisons(latency_df, throughput_df, output_dir='plots'):
     n_val = 31
     df_n31 = latency_df[latency_df['N'] == n_val].copy()
     
-    # Group by B and protocol
+    # Group by B and protocol, exclude B=0
     speedups = []
     for b_val in sorted(df_n31['B'].unique()):
+        if b_val == 0:
+            continue
         b_df = df_n31[df_n31['B'] == b_val]
         if len(b_df) < 3:
             continue
@@ -239,14 +260,15 @@ def plot_additional_comparisons(latency_df, throughput_df, output_dir='plots'):
 def main():
     print("Loading data...")
     latency_df, throughput_df = load_data()
+    agg_df = load_aggregated_data()
     
-    print("Generating Figure 2 (Latency vs Input Size for N=31)...")
+    print("Generating Figure 2 (Latency vs Batch Size for N=16 and N=31)...")
     plot_figure2(latency_df)
     
-    print("Generating Figure 3 (Throughput vs Scale for B=1000)...")
-    plot_figure3(throughput_df)
+    print("Generating Figure 3 (Throughput vs Batch Size for N=16 and N=31)...")
+    plot_figure3(agg_df)
     
-    print("Generating Figure 4 (Latency vs Scale for B=1000)...")
+    print("Generating Figure 4 (Latency vs Number of Nodes for B=100 and B=1000)...")
     plot_figure4(latency_df)
     
     print("Generating additional comparison plots...")
